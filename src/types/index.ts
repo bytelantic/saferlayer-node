@@ -62,18 +62,27 @@ export interface WatermarkOptions {
   
   /**
    * Callback fired when a job's status changes.
+   * @param watermarkId - The watermark job ID
+   * @param status - The current status
+   * @param index - The index of the image in the input array
    */
-  onStatusChange?: (watermarkId: string, status: WatermarkStatus) => void;
+  onStatusChange?: (watermarkId: string, status: WatermarkStatus, index: number) => void;
   
   /**
    * Callback fired when a job completes.
+   * @param watermarkId - The watermark job ID
+   * @param result - The completed watermark result
+   * @param index - The index of the image in the input array
    */
-  onComplete?: (watermarkId: string, result: WatermarkResult) => void | Promise<void>;
+  onComplete?: (watermarkId: string, result: WatermarkResult, index: number) => void | Promise<void>;
   
   /**
    * Callback fired when a job fails.
+   * @param watermarkId - The watermark job ID
+   * @param error - The error that occurred
+   * @param index - The index of the image in the input array
    */
-  onError?: (watermarkId: string, error: Error) => void;
+  onError?: (watermarkId: string, error: Error, index: number) => void;
 }
 
 /**

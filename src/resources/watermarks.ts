@@ -10,10 +10,12 @@ import type {
 import { ValidationError, TimeoutError, SaferLayerError } from '../errors/index.js';
 import type { SaferLayerClient } from '../client.js';
 import { prepareImage } from '../client.js';
+import pLimit from 'p-limit';
 
 const VALID_FILTERS: readonly FilterName[] = ['isoline', 'bulge'];
 const POLL_INTERVAL = 1000; // 1 second
 const DEFAULT_TIMEOUT = 300_000; // 5 minutes
+const MAX_CONCURRENCY = 20;
 
 /**
  * Resource for creating watermarks.
@@ -57,11 +59,12 @@ export class Watermarks {
     }
 
     const timeout = requestOptions?.timeout ?? DEFAULT_TIMEOUT;
+    const limit = pLimit(MAX_CONCURRENCY);
 
-    // Queue all jobs
-    const jobs: Array<{ input: WatermarkInput; watermarkId: string }> = [];
+    // Queue all jobs in parallel (max 20 concurrent)
+    const jobs: Array<{ input: WatermarkInput; watermarkId: string; index: number }> = [];
     
-    for (const input of imageList) {
+    const queuePromises = imageList.map((input, index) => limit(async () => {
       const formData = await this.buildFormData(input);
       
       const response = await this.client.uploadFile(
@@ -71,24 +74,27 @@ export class Watermarks {
       );
 
       const data = await response.json() as { watermarkId: string; status: string };
-      jobs.push({ input, watermarkId: data.watermarkId });
+      const job = { input, watermarkId: data.watermarkId, index };
+      jobs.push(job);
       
       onStatusChange?.(data.watermarkId, {
         success: true,
         watermarkId: data.watermarkId,
         status: 'queued',
-      });
-    }
+      }, index);
+    }));
 
-    // Poll for all completions
-    const results: WatermarkResult[] = [];
-    const pending = new Set(jobs.map(j => j.watermarkId));
+    await Promise.all(queuePromises);
+
+    // Poll for all completions in parallel
+    const results: Array<{ result: WatermarkResult; index: number }> = [];
+    const pending = new Map(jobs.map(j => [j.watermarkId, j.index]));
     const errors = new Map<string, Error>();
     const startTime = Date.now();
 
     while (pending.size > 0) {
       if (Date.now() - startTime > timeout) {
-        const remaining = Array.from(pending);
+        const remaining = Array.from(pending.keys());
         throw new TimeoutError(
           `Timed out waiting for ${remaining.length} job(s): ${remaining.join(', ')}`,
           timeout
@@ -97,30 +103,35 @@ export class Watermarks {
 
       await sleep(POLL_INTERVAL);
 
-      for (const watermarkId of pending) {
-        try {
-          const status = await this.getStatus(watermarkId, requestOptions);
-          onStatusChange?.(watermarkId, status);
+      // Poll all pending jobs in parallel
+      const pollPromises = Array.from(pending.entries()).map(([watermarkId, index]) => 
+        limit(async () => {
+          try {
+            const status = await this.getStatus(watermarkId, requestOptions);
+            onStatusChange?.(watermarkId, status, index);
 
-          if (status.status === 'completed') {
-            onStatusChange?.(watermarkId, { ...status, status: 'downloading' });
-            const result = await this.download(watermarkId, requestOptions);
-            results.push(result);
-            pending.delete(watermarkId);
-            await onComplete?.(watermarkId, result);
-          } else if (status.status === 'failed') {
-            const error = new SaferLayerError(
-              status.error?.message ?? 'Watermark processing failed',
-              status.error?.statusCode
-            );
-            errors.set(watermarkId, error);
-            pending.delete(watermarkId);
-            onError?.(watermarkId, error);
+            if (status.status === 'completed') {
+              onStatusChange?.(watermarkId, { ...status, status: 'downloading' }, index);
+              const result = await this.download(watermarkId, requestOptions);
+              results.push({ result, index });
+              pending.delete(watermarkId);
+              await onComplete?.(watermarkId, result, index);
+            } else if (status.status === 'failed') {
+              const error = new SaferLayerError(
+                status.error?.message ?? 'Watermark processing failed',
+                status.error?.statusCode
+              );
+              errors.set(watermarkId, error);
+              pending.delete(watermarkId);
+              onError?.(watermarkId, error, index);
+            }
+          } catch {
+            // Ignore transient errors during polling, will retry
           }
-        } catch {
-          // Ignore transient errors during polling, will retry
-        }
-      }
+        })
+      );
+
+      await Promise.all(pollPromises);
     }
 
     // If all jobs failed, throw
@@ -129,7 +140,10 @@ export class Watermarks {
       throw firstError;
     }
 
-    return results;
+    // Sort results by original index and return
+    return results
+      .sort((a, b) => a.index - b.index)
+      .map(r => r.result);
   }
 
   /**

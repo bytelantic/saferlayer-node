@@ -1,11 +1,73 @@
 import { Command } from 'commander';
-import { writeFile, mkdir } from 'node:fs/promises';
-import { resolve, basename, extname } from 'node:path';
-import ora from 'ora';
+import { writeFile, mkdir, access } from 'node:fs/promises';
+import { resolve, basename, extname, join } from 'node:path';
+import logUpdate from 'log-update';
 import pc from 'picocolors';
 import { SaferLayerClient } from '../../client.js';
-import type { FilterName, WatermarkInput } from '../../types/index.js';
+import type { FilterName, WatermarkInput, WatermarkJobStatus } from '../../types/index.js';
 import { getApiKey, formatDuration, formatBytes } from '../utils.js';
+
+interface FileStatus {
+  file: string;
+  status: WatermarkJobStatus | 'pending';
+  watermarkId?: string;
+  error?: string;
+  outputPath?: string;
+}
+
+/**
+ * Generate a unique filename by appending _1, _2, etc. if file exists
+ */
+async function getUniqueFilename(outputDir: string, baseName: string, ext: string): Promise<string> {
+  const baseFilename = `${baseName}_watermarked${ext}`;
+  let outputPath = join(outputDir, baseFilename);
+  
+  let counter = 1;
+  while (true) {
+    try {
+      await access(outputPath);
+      // File exists, try next number
+      outputPath = join(outputDir, `${baseName}_watermarked_${counter}${ext}`);
+      counter++;
+    } catch {
+      // File doesn't exist, we can use this name
+      return outputPath;
+    }
+  }
+}
+
+/**
+ * Render all file statuses as multi-line output
+ */
+function renderStatus(statuses: FileStatus[], total: number): string {
+  const lines = statuses.map((s, i) => {
+    const fileName = basename(s.file);
+    const idPart = s.watermarkId ? pc.dim(` (${s.watermarkId})`) : '';
+    
+    switch (s.status) {
+      case 'pending':
+        return `  ${pc.dim('○')} ${fileName}${idPart} ${pc.dim('pending')}`;
+      case 'queued':
+        return `  ${pc.blue('○')} ${fileName}${idPart} ${pc.blue('queued')}`;
+      case 'processing':
+        return `  ${pc.yellow('◐')} ${fileName}${idPart} ${pc.yellow('processing')}`;
+      case 'downloading':
+        return `  ${pc.cyan('◐')} ${fileName}${idPart} ${pc.cyan('downloading')}`;
+      case 'completed':
+        return `  ${pc.green('✓')} ${fileName}${idPart} ${pc.green('done')}`;
+      case 'failed':
+        return `  ${pc.red('✗')} ${fileName}${idPart} ${pc.red(s.error ?? 'failed')}`;
+      default:
+        return `  ${pc.dim('○')} ${fileName}${idPart} ${pc.dim(s.status)}`;
+    }
+  });
+  
+  const completed = statuses.filter(s => s.status === 'completed').length;
+  const failed = statuses.filter(s => s.status === 'failed').length;
+  const header = pc.dim(`Processing ${completed + failed}/${total} image(s)...\n`);
+  
+  return header + lines.join('\n');
+}
 
 export const watermarkCommand = new Command('watermark')
   .description('Apply watermark to one or more images')
@@ -15,8 +77,6 @@ export const watermarkCommand = new Command('watermark')
   .option('--api-key <key>', 'API key (or set SAFERLAYER_API_KEY env var)')
   .argument('<files...>', 'Image files to watermark')
   .action(async (files: string[], options) => {
-    const spinner = ora();
-    
     try {
       const apiKey = getApiKey(options.apiKey);
       if (!apiKey) {
@@ -37,63 +97,67 @@ export const watermarkCommand = new Command('watermark')
         ? options.skipFilters.split(',').map((f: string) => f.trim()) as FilterName[]
         : undefined;
 
-      // Build inputs with index tracking
-      const inputsWithIndex: Array<{ input: WatermarkInput; file: string; index: number }> = files.map((file, index) => ({
-        input: {
-          image: resolve(file),
-          watermarkText: options.text,
-          skipFilters,
-        },
-        file,
-        index,
+      // Initialize status for each file
+      const fileStatuses: FileStatus[] = files.map(file => ({
+        file: resolve(file),
+        status: 'pending',
       }));
 
-      // Map watermarkId -> file info
-      const idToFile = new Map<string, { file: string; index: number }>();
+      // Build inputs
+      const inputs: WatermarkInput[] = files.map(file => ({
+        image: resolve(file),
+        watermarkText: options.text,
+        skipFilters,
+      }));
 
-      console.log(pc.dim(`Processing ${files.length} image(s)...`));
-      console.log();
-
-      let completed = 0;
-      let failed = 0;
+      // Track claimed output filenames to avoid collisions
+      const claimedPaths = new Set<string>();
+      
       const startTime = Date.now();
 
-      spinner.start(`Queuing ${files.length} image(s)...`);
+      // Initial render
+      logUpdate(renderStatus(fileStatuses, files.length));
 
       const results = await client.watermarks.create({
-        images: inputsWithIndex.map(i => i.input),
-        onStatusChange: (id, status) => {
-          // Track file by order of queuing
-          if (status.status === 'queued' && !idToFile.has(id)) {
-            const nextUnqueued = inputsWithIndex.find(i => !Array.from(idToFile.values()).some(v => v.index === i.index));
-            if (nextUnqueued) {
-              idToFile.set(id, { file: nextUnqueued.file, index: nextUnqueued.index });
-            }
+        images: inputs,
+        onStatusChange: (id, status, index) => {
+          fileStatuses[index].watermarkId = id;
+          fileStatuses[index].status = status.status;
+          logUpdate(renderStatus(fileStatuses, files.length));
+        },
+        onComplete: async (id, result, index) => {
+          const originalFile = fileStatuses[index].file;
+          const baseName = basename(originalFile, extname(originalFile));
+          
+          // Get unique filename
+          let outputPath = join(outputDir, `${baseName}_watermarked.png`);
+          if (claimedPaths.has(outputPath)) {
+            outputPath = await getUniqueFilename(outputDir, baseName, '.png');
           }
-          const fileInfo = idToFile.get(id);
-          const fileName = fileInfo ? basename(fileInfo.file) : id;
-          spinner.text = `[${completed + failed}/${files.length}] ${fileName} ${pc.dim(`(${id})`)} ${pc.yellow(status.status)}`;
-        },
-        onComplete: async (id, result) => {
-          const fileInfo = idToFile.get(id);
-          const originalFile = fileInfo?.file ?? `unknown-${id}`;
-          const fileName = basename(originalFile);
-          const outputPath = resolve(outputDir, `${basename(originalFile, extname(originalFile))}_watermarked.png`);
+          claimedPaths.add(outputPath);
+          
           await writeFile(outputPath, result.image);
-          completed++;
-          spinner.text = `[${completed + failed}/${files.length}] ${pc.green('✓')} ${fileName} ${pc.dim(`(${id})`)}`;
+          fileStatuses[index].status = 'completed';
+          fileStatuses[index].outputPath = outputPath;
+          logUpdate(renderStatus(fileStatuses, files.length));
         },
-        onError: (id, error) => {
-          const fileInfo = idToFile.get(id);
-          const fileName = fileInfo ? basename(fileInfo.file) : id;
-          failed++;
-          spinner.text = `[${completed + failed}/${files.length}] ${pc.red('✗')} ${fileName} ${pc.dim(`(${id})`)} - ${error.message}`;
+        onError: (id, error, index) => {
+          fileStatuses[index].status = 'failed';
+          fileStatuses[index].error = error.message;
+          logUpdate(renderStatus(fileStatuses, files.length));
         },
       });
 
       const totalTime = Date.now() - startTime;
+      const completed = fileStatuses.filter(s => s.status === 'completed').length;
+      const failed = fileStatuses.filter(s => s.status === 'failed').length;
 
-      spinner.succeed(pc.green(`Completed ${completed} image(s)`));
+      // Final render and persist
+      logUpdate(renderStatus(fileStatuses, files.length));
+      logUpdate.done();
+
+      console.log();
+      console.log(pc.green(`✓ Completed ${completed} image(s)`));
       console.log();
       console.log(pc.dim('  Output directory:'), outputDir);
       console.log(pc.dim('  Successful:'), pc.green(completed.toString()));
@@ -106,7 +170,7 @@ export const watermarkCommand = new Command('watermark')
       console.log(pc.dim('  Total size:'), formatBytes(totalBytes));
 
     } catch (error) {
-      spinner.fail(pc.red('Failed to process images'));
+      logUpdate.done();
       
       if (error instanceof Error) {
         console.error(pc.red(`\nError: ${error.message}`));
