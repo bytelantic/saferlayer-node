@@ -1,0 +1,72 @@
+{
+  "name": "@saferlayer/client",
+  "version": "1.0.0",
+  "description": "Official Node.js client for the SaferLayer Watermark API",
+  "author": "Bytelantic <support@saferlayer.com>",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "bin": {
+    "saferlayer": "./dist/cli/bin.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "saferlayer",
+    "watermark",
+    "api",
+    "client",
+    "image",
+    "document",
+    "security"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bytelantic/saferlayer-node"
+  },
+  "bugs": {
+    "url": "https://github.com/bytelantic/saferlayer-node/issues"
+  },
+  "homepage": "https://saferlayer.com",
+  "dependencies": {
+    "commander": "^12.1.0",
+    "form-data": "^4.0.0",
+    "ora": "^8.1.1",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

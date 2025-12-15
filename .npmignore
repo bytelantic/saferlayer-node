@@ -1,0 +1,23 @@
+# Source files (we ship dist/)
+src/
+tsconfig.json
+tsup.config.ts
+
+# Tests
+tests/
+*.test.ts
+vitest.config.ts
+coverage/
+
+# Development
+.github/
+.vscode/
+.idea/
+.env*
+
+# Examples (separate from dist)
+examples/
+
+# Misc
+*.log
+.DS_Store
