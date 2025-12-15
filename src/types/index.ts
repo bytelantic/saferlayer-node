@@ -42,7 +42,7 @@ export interface WatermarkInput {
    * Text to display as watermark.
    * @maxLength 100
    */
-  watermarkText: string;
+  text: string;
   
   /**
    * Filters to skip during processing.
@@ -56,9 +56,9 @@ export interface WatermarkInput {
  */
 export interface WatermarkOptions {
   /**
-   * One or more images to watermark.
+   * Array of watermarks to create.
    */
-  images: WatermarkInput | WatermarkInput[];
+  watermarks: WatermarkInput[];
   
   /**
    * Callback fired when a job's status changes.

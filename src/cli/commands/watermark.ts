@@ -106,7 +106,7 @@ export const watermarkCommand = new Command('watermark')
       // Build inputs
       const inputs: WatermarkInput[] = files.map(file => ({
         image: resolve(file),
-        watermarkText: options.text,
+        text: options.text,
         skipFilters,
       }));
 
@@ -119,7 +119,7 @@ export const watermarkCommand = new Command('watermark')
       logUpdate(renderStatus(fileStatuses, files.length));
 
       const results = await client.watermarks.create({
-        images: inputs,
+        watermarks: inputs,
         onStatusChange: (id, status, index) => {
           fileStatuses[index].watermarkId = id;
           fileStatuses[index].status = status.status;

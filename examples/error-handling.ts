@@ -20,10 +20,12 @@ async function main() {
 
   try {
     await client.watermarks.create({
-      images: {
-        image: './test-image.jpg',
-        watermarkText: 'TEST',
-      },
+      watermarks: [
+        {
+          image: './test-image.jpg',
+          text: 'Submitted by John Smith for ID verification only',
+        },
+      ],
     });
   } catch (error) {
     if (error instanceof AuthenticationError) {

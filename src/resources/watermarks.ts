@@ -31,16 +31,10 @@ export class Watermarks {
    *
    * @example
    * ```typescript
-   * // Single image
-   * const [result] = await client.watermarks.create({
-   *   images: { image: './doc.jpg', watermarkText: 'CONFIDENTIAL' },
-   * });
-   * 
-   * // Multiple images
    * const results = await client.watermarks.create({
-   *   images: [
-   *     { image: './doc1.jpg', watermarkText: 'CONFIDENTIAL' },
-   *     { image: './doc2.jpg', watermarkText: 'DRAFT' },
+   *   watermarks: [
+   *     { image: './id-front.jpg', text: 'Provided by John Smith for ID verification only' },
+   *     { image: './id-back.jpg', text: 'Provided by John Smith for ID verification only' },
    *   ],
    *   onComplete: (id, result) => console.log(`Done: ${id}`),
    * });
@@ -50,11 +44,10 @@ export class Watermarks {
     options: WatermarkOptions,
     requestOptions?: RequestOptions
   ): Promise<WatermarkResult[]> {
-    const { images, onStatusChange, onComplete, onError } = options;
-    const imageList = Array.isArray(images) ? images : [images];
+    const { watermarks, onStatusChange, onComplete, onError } = options;
     
     // Validate all inputs first
-    for (const input of imageList) {
+    for (const input of watermarks) {
       this.validateInput(input);
     }
 
@@ -64,7 +57,7 @@ export class Watermarks {
     // Queue all jobs in parallel (max 20 concurrent)
     const jobs: Array<{ input: WatermarkInput; watermarkId: string; index: number }> = [];
     
-    const queuePromises = imageList.map((input, index) => limit(async () => {
+    const queuePromises = watermarks.map((input, index) => limit(async () => {
       const formData = await this.buildFormData(input);
       
       const response = await this.client.uploadFile(
@@ -202,14 +195,14 @@ export class Watermarks {
       throw new ValidationError('Image is required', 'image');
     }
 
-    if (!input.watermarkText) {
-      throw new ValidationError('Watermark text is required', 'watermarkText');
+    if (!input.text) {
+      throw new ValidationError('Watermark text is required', 'text');
     }
 
-    if (input.watermarkText.length > 100) {
+    if (input.text.length > 100) {
       throw new ValidationError(
         'Watermark text cannot exceed 100 characters',
-        'watermarkText'
+        'text'
       );
     }
 
@@ -235,7 +228,7 @@ export class Watermarks {
     
     const imageBlob = await prepareImage(input.image);
     formData.append('image', imageBlob, 'image');
-    formData.append('watermarkText', input.watermarkText);
+    formData.append('watermarkText', input.text);
 
     if (input.skipFilters && input.skipFilters.length > 0) {
       formData.append('skipFilters', input.skipFilters.join(','));

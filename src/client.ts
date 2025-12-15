@@ -27,9 +27,9 @@ const DEFAULT_MAX_RETRIES = 3;
  *
  * // Watermark one or more images
  * const results = await client.watermarks.create({
- *   images: [
- *     { image: './doc1.jpg', watermarkText: 'CONFIDENTIAL' },
- *     { image: './doc2.jpg', watermarkText: 'DRAFT' },
+ *   watermarks: [
+ *     { image: './id-front.jpg', text: 'Submitted by Jane Doe for ACME Realty' },
+ *     { image: './id-back.jpg', text: 'Submitted by Jane Doe for ACME Realty' },
  *   ],
  * });
  *

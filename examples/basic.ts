@@ -15,12 +15,14 @@ async function main() {
 
   console.log('Watermarking images...');
   
-  // Single image
+  // Watermark an image
   const [result] = await client.watermarks.create({
-    images: {
-      image: './test-image.jpg', // Replace with your image path
-      watermarkText: 'CONFIDENTIAL - Internal Use Only',
-    },
+    watermarks: [
+      {
+        image: './test-image.jpg', // Replace with your image path
+        text: 'Submitted by John Smith for ID verification only',
+      },
+    ],
   });
 
   // Save the watermarked image

@@ -24,9 +24,9 @@ const client = new SaferLayer({
 
 // Watermark one or more images
 const results = await client.watermarks.create({
-  images: [
-    { image: './doc1.jpg', watermarkText: 'CONFIDENTIAL' },
-    { image: './doc2.jpg', watermarkText: 'DRAFT' },
+  watermarks: [
+    { image: './id-front.jpg', text: 'Submitted by Jane Doe for ACME Realty' },
+    { image: './id-back.jpg', text: 'Submitted by Jane Doe for ACME Realty' },
   ],
 });
 
@@ -42,11 +42,13 @@ for (const result of results) {
 
 ```typescript
 const [result] = await client.watermarks.create({
-  images: {
-    image: './document.jpg',        // File path, Buffer, or Blob
-    watermarkText: 'CONFIDENTIAL',
-    skipFilters: ['isoline'],       // Optional: skip certain filters
-  },
+  watermarks: [
+    {
+      image: './document.jpg',        // File path, Buffer, or Blob
+      text: 'Submitted by John Smith for ID verification only',
+      skipFilters: ['isoline'],       // Optional: skip certain filters
+    },
+  ],
 });
 
 // result.watermarkId: string - unique ID for this job
@@ -60,10 +62,10 @@ const [result] = await client.watermarks.create({
 
 ```typescript
 const results = await client.watermarks.create({
-  images: [
-    { image: './doc1.jpg', watermarkText: 'CONFIDENTIAL' },
-    { image: './doc2.jpg', watermarkText: 'DRAFT' },
-    { image: buffer, watermarkText: 'FOR REVIEW ONLY' },
+  watermarks: [
+    { image: './id-front.jpg', text: 'Submitted by Jane Doe for ACME Realty' },
+    { image: './id-back.jpg', text: 'Submitted by Jane Doe for ACME Realty' },
+    { image: buffer, text: 'Submitted by Jane Doe for ACME Realty' },
   ],
   onStatusChange: (id, status) => {
     console.log(`[${id}] ${status.status}`);
@@ -105,11 +107,11 @@ npx @saferlayer/client watermark image.jpg -t "CONFIDENTIAL"
 Apply watermark to one or more images:
 
 ```bash
-saferlayer watermark doc1.jpg doc2.jpg doc3.jpg -t "CONFIDENTIAL"
+saferlayer watermark id-front.jpg id-back.jpg -t "Submitted by Jane Doe for ACME Realty"
 
 # Options:
 #   -t, --text <text>        Watermark text (required)
-#   -o, --output <dir>       Output directory (default: ./watermarked)
+#   -o, --output <dir>       Output directory (default: current directory)
 #   --skip-filters <list>    Filters to skip: isoline, bulge
 #   --api-key <key>          API key (or use SAFERLAYER_API_KEY env var)
 ```

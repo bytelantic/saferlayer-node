@@ -19,10 +19,10 @@ async function main() {
   console.log('Watermarking multiple images...\n');
 
   const results = await client.watermarks.create({
-    images: [
-      { image: './doc1.jpg', watermarkText: 'CONFIDENTIAL' },
-      { image: './doc2.jpg', watermarkText: 'DRAFT' },
-      { image: './doc3.jpg', watermarkText: 'FOR REVIEW ONLY' },
+    watermarks: [
+      { image: './id-front.jpg', text: 'Submitted by Jane Doe for ACME Realty' },
+      { image: './id-back.jpg', text: 'Submitted by Jane Doe for ACME Realty' },
+      { image: './proof-of-address.jpg', text: 'Submitted by Jane Doe for ACME Realty' },
     ],
     onStatusChange: (id, status) => {
       console.log(`  [${id}] ${status.status}`);
