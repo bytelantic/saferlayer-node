@@ -54,7 +54,7 @@ function renderStatus(statuses: FileStatus[], total: number): string {
       case 'downloading':
         return `  ${pc.cyan('◐')} ${fileName}${idPart} ${pc.cyan('downloading')}`;
       case 'completed':
-        return `  ${pc.green('✓')} ${fileName}${idPart} ${pc.green('done')}`;
+        return `  ${pc.green('✓')} ${fileName}${idPart} ${pc.green('done')} ${pc.dim('→')} ${s.outputPath}`;
       case 'failed':
         return `  ${pc.red('✗')} ${fileName}${idPart} ${pc.red(s.error ?? 'failed')}`;
       default:
@@ -159,7 +159,6 @@ export const watermarkCommand = new Command('watermark')
       console.log();
       console.log(pc.green(`✓ Completed ${completed} image(s)`));
       console.log();
-      console.log(pc.dim('  Output directory:'), outputDir);
       console.log(pc.dim('  Successful:'), pc.green(completed.toString()));
       if (failed > 0) {
         console.log(pc.dim('  Failed:'), pc.red(failed.toString()));
