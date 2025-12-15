@@ -59,14 +59,12 @@
   "homepage": "https://saferlayer.com",
   "dependencies": {
     "commander": "^12.1.0",
-    "form-data": "^4.0.0",
     "log-update": "^7.0.2",
     "ora": "^8.1.1",
     "p-limit": "^7.2.0",
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
-    "@types/log-update": "^2.0.0",
     "@types/node": "^20.10.0",
     "tsup": "^8.3.5",
     "typescript": "^5.7.2",
