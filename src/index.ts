@@ -16,6 +16,7 @@ export type {
   HealthCheckResponse,
   
   // Enums/Unions
+  FileType,
   FilterName,
   WatermarkJobStatus,
   ImageSize,

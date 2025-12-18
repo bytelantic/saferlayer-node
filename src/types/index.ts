@@ -9,6 +9,11 @@ export type FilterName = 'isoline' | 'bulge';
 export const VALID_FILTER_NAMES: readonly FilterName[] = ['isoline', 'bulge'] as const;
 
 /**
+ * Supported file types for watermarking.
+ */
+export type FileType = 'image' | 'pdf';
+
+/**
  * Image dimensions.
  */
 export interface ImageSize {
@@ -17,26 +22,34 @@ export interface ImageSize {
 }
 
 /**
- * Metadata returned after watermarking an image.
+ * Metadata returned after watermarking a file.
  */
 export interface WatermarkMetadata {
-  /** Original image dimensions */
+  /** Original image/page dimensions */
   originalSize: ImageSize;
-  /** Watermarked image dimensions */
+  /** Watermarked image/page dimensions */
   watermarkedSize: ImageSize;
   /** Processing time in milliseconds */
   processingTime: number;
+  /** Number of pages (PDF only) */
+  pageCount?: number;
 }
 
 /**
- * Options for a single image to watermark.
+ * Options for a single file to watermark.
  */
 export interface WatermarkInput {
   /**
-   * Image file to watermark.
+   * File to watermark (image or PDF).
    * Can be a Buffer, File, Blob, or a path string (Node.js only).
+   * Supported formats: JPEG, PNG, GIF, WebP, PDF
    */
-  image: Buffer | Blob | string;
+  file: Buffer | Blob | string;
+  
+  /**
+   * @deprecated Use `file` instead. Alias for backward compatibility.
+   */
+  image?: Buffer | Blob | string;
   
   /**
    * Text to display as watermark.
@@ -120,9 +133,15 @@ export interface WatermarkStatus {
 export interface WatermarkResult {
   /** Unique identifier for the watermark job */
   watermarkId: string;
-  /** Watermarked image as a Buffer */
+  /** Watermarked file as a Buffer (image or PDF) */
+  data: Buffer;
+  /**
+   * @deprecated Use `data` instead. Alias for backward compatibility.
+   */
   image: Buffer;
-  /** Image metadata */
+  /** Type of file that was processed */
+  fileType: FileType;
+  /** File metadata */
   metadata: WatermarkMetadata;
 }
 
@@ -150,6 +169,13 @@ export interface SaferLayerClientOptions {
    * @default process.env.SAFERLAYER_API_KEY
    */
   apiKey?: string;
+
+  /**
+   * Base URL for the API.
+   * Useful for local development or custom deployments.
+   * @default process.env.SAFERLAYER_API_URL ?? 'https://api.saferlayer.com'
+   */
+  baseUrl?: string;
   
   /**
    * Request timeout in milliseconds.

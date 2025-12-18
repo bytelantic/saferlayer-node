@@ -2,7 +2,7 @@
 
 Official Node.js client for the [SaferLayer Watermark API](https://saferlayer.com).
 
-Apply secure watermarks to images with a simple API.
+Apply secure watermarks to images and PDFs with a simple API.
 
 ## Installation
 
@@ -22,50 +22,70 @@ const client = new SaferLayer({
   apiKey: 'sl_live_...', // or set SAFERLAYER_API_KEY env var
 });
 
-// Watermark one or more images
+// Watermark one or more files (images or PDFs)
 const results = await client.watermarks.create({
   watermarks: [
-    { image: './id-front.jpg', text: 'Submitted by Jane Doe for ACME Realty' },
-    { image: './id-back.jpg', text: 'Submitted by Jane Doe for ACME Realty' },
+    { file: './id-front.jpg', text: 'Submitted by Jane Doe for ACME Realty' },
+    { file: './id-back.jpg', text: 'Submitted by Jane Doe for ACME Realty' },
+    { file: './contract.pdf', text: 'Submitted by Jane Doe for ACME Realty' },
   ],
 });
 
-// Save the watermarked images
+// Save the watermarked files
 for (const result of results) {
-  await writeFile(`${result.watermarkId}.png`, result.image);
+  const ext = result.fileType === 'pdf' ? 'pdf' : 'png';
+  await writeFile(`${result.watermarkId}.${ext}`, result.data);
 }
 ```
 
 ## Usage
 
-### Single Image
+### Single File
 
 ```typescript
 const [result] = await client.watermarks.create({
   watermarks: [
     {
-      image: './document.jpg',        // File path, Buffer, or Blob
+      file: './document.jpg',         // File path, Buffer, or Blob
       text: 'Submitted by John Smith for ID verification only',
-      skipFilters: ['isoline'],       // Optional: skip certain filters
+      skipFilters: ['isoline'],        // Optional: skip certain filters
     },
   ],
 });
 
 // result.watermarkId: string - unique ID for this job
-// result.image: Buffer - the watermarked PNG image
+// result.data: Buffer - the watermarked file (PNG for images, PDF for PDFs)
+// result.fileType: 'image' | 'pdf'
 // result.metadata.originalSize: { width, height }
 // result.metadata.watermarkedSize: { width, height }
 // result.metadata.processingTime: number (ms)
+// result.metadata.pageCount: number (PDFs only)
 ```
 
-### Multiple Images
+### PDF Files
+
+```typescript
+const [result] = await client.watermarks.create({
+  watermarks: [
+    {
+      file: './contract.pdf',
+      text: 'DRAFT - For Review Only',
+    },
+  ],
+});
+
+console.log(`Processed ${result.metadata.pageCount} pages`);
+await writeFile('contract_watermarked.pdf', result.data);
+```
+
+### Multiple Files
 
 ```typescript
 const results = await client.watermarks.create({
   watermarks: [
-    { image: './id-front.jpg', text: 'Submitted by Jane Doe for ACME Realty' },
-    { image: './id-back.jpg', text: 'Submitted by Jane Doe for ACME Realty' },
-    { image: buffer, text: 'Submitted by Jane Doe for ACME Realty' },
+    { file: './id-front.jpg', text: 'Submitted by Jane Doe for ACME Realty' },
+    { file: './id-back.jpg', text: 'Submitted by Jane Doe for ACME Realty' },
+    { file: buffer, text: 'Submitted by Jane Doe for ACME Realty' },
   ],
   onStatusChange: (id, status) => {
     console.log(`[${id}] ${status.status}`);
@@ -104,10 +124,10 @@ npx @saferlayer/client watermark image.jpg -t "CONFIDENTIAL"
 
 #### watermark
 
-Apply watermark to one or more images:
+Apply watermark to one or more files (images or PDFs):
 
 ```bash
-saferlayer watermark id-front.jpg id-back.jpg -t "Submitted by Jane Doe for ACME Realty"
+saferlayer watermark id-front.jpg id-back.jpg contract.pdf -t "Submitted by Jane Doe for ACME Realty"
 
 # Options:
 #   -t, --text <text>        Watermark text (required)
@@ -203,18 +223,24 @@ import SaferLayer, {
   type WatermarkInput,
   type WatermarkOptions,
   type WatermarkResult,
+  type FileType,
   type FilterName,
 } from '@saferlayer/client';
 
 const input: WatermarkInput = {
-  image: buffer,
-  watermarkText: 'TYPED',
+  file: buffer,
+  text: 'TYPED',
   skipFilters: ['isoline'] satisfies FilterName[],
 };
 
 const results: WatermarkResult[] = await client.watermarks.create({
-  images: [input],
+  watermarks: [input],
 });
+
+// Check file type
+if (results[0].fileType === 'pdf') {
+  console.log(`Processed ${results[0].metadata.pageCount} pages`);
+}
 ```
 
 ## License

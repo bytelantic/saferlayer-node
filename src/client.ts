@@ -2,7 +2,6 @@ import { readFile } from 'node:fs/promises';
 import type {
   SaferLayerClientOptions,
   RequestOptions,
-  WatermarkInput,
 } from './types/index.js';
 import {
   SaferLayerError,
@@ -53,7 +52,7 @@ export class SaferLayerClient {
 
   constructor(options: SaferLayerClientOptions = {}) {
     this.apiKey = options.apiKey ?? process.env.SAFERLAYER_API_KEY ?? '';
-    this.baseUrl = DEFAULT_BASE_URL;
+    this.baseUrl = options.baseUrl ?? process.env.SAFERLAYER_API_URL ?? DEFAULT_BASE_URL;
     this.timeout = options.timeout ?? DEFAULT_TIMEOUT;
     this.maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
 
@@ -313,24 +312,24 @@ export class SaferLayerClient {
 }
 
 /**
- * Helper to prepare image for upload.
+ * Helper to prepare file for upload.
  * Converts file paths to Buffers.
  */
 export async function prepareImage(
-  image: WatermarkInput['image']
+  file: Buffer | Blob | string
 ): Promise<Blob> {
-  if (typeof image === 'string') {
+  if (typeof file === 'string') {
     // It's a file path - read it
-    const buffer = await readFile(image);
+    const buffer = await readFile(file);
     return new Blob([buffer]);
   }
   
-  if (Buffer.isBuffer(image)) {
-    return new Blob([image]);
+  if (Buffer.isBuffer(file)) {
+    return new Blob([file]);
   }
   
   // Already a Blob
-  return image;
+  return file;
 }
 
 /**

@@ -6,6 +6,7 @@ import type {
   WatermarkMetadata,
   RequestOptions,
   FilterName,
+  FileType,
 } from '../types/index.js';
 import { ValidationError, TimeoutError, SaferLayerError } from '../errors/index.js';
 import type { SaferLayerClient } from '../client.js';
@@ -166,7 +167,11 @@ export class Watermarks {
       { ...requestOptions, parseJson: false }
     );
 
-    const imageBuffer = Buffer.from(await response.arrayBuffer());
+    const dataBuffer = Buffer.from(await response.arrayBuffer());
+    
+    // Determine file type from response header (defaults to 'image' for backward compatibility)
+    const fileType = (response.headers.get('X-File-Type') ?? 'image') as FileType;
+    const pageCount = response.headers.get('X-Page-Count');
     
     const metadata: WatermarkMetadata = {
       originalSize: {
@@ -178,11 +183,14 @@ export class Watermarks {
         height: parseInt(response.headers.get('X-Watermarked-Height') ?? '0', 10),
       },
       processingTime: parseInt(response.headers.get('X-Processing-Time') ?? '0', 10),
+      ...(pageCount ? { pageCount: parseInt(pageCount, 10) } : {}),
     };
 
     return {
       watermarkId,
-      image: imageBuffer,
+      data: dataBuffer,
+      image: dataBuffer, // Backward compatibility alias
+      fileType,
       metadata,
     };
   }
@@ -191,8 +199,11 @@ export class Watermarks {
    * Validate a watermark input.
    */
   private validateInput(input: WatermarkInput): void {
-    if (!input.image) {
-      throw new ValidationError('Image is required', 'image');
+    // Support both 'file' and legacy 'image' field
+    const file = input.file ?? input.image;
+    
+    if (!file) {
+      throw new ValidationError('File is required (use "file" or "image" field)', 'file');
     }
 
     if (!input.text) {
@@ -226,8 +237,10 @@ export class Watermarks {
   private async buildFormData(input: WatermarkInput): Promise<FormData> {
     const formData = new FormData();
     
-    const imageBlob = await prepareImage(input.image);
-    formData.append('image', imageBlob, 'image');
+    // Support both 'file' and legacy 'image' field
+    const file = input.file ?? input.image;
+    const fileBlob = await prepareImage(file!);
+    formData.append('file', fileBlob, 'file');
     formData.append('watermarkText', input.text);
 
     if (input.skipFilters && input.skipFilters.length > 0) {

@@ -4,7 +4,7 @@ import { resolve, basename, extname, join } from 'node:path';
 import logUpdate from 'log-update';
 import pc from 'picocolors';
 import { SaferLayerClient } from '../../client.js';
-import type { FilterName, WatermarkInput, WatermarkJobStatus } from '../../types/index.js';
+import type { FilterName, WatermarkInput, WatermarkJobStatus, FileType } from '../../types/index.js';
 import { getApiKey, formatDuration, formatBytes } from '../utils.js';
 
 interface FileStatus {
@@ -13,6 +13,7 @@ interface FileStatus {
   watermarkId?: string;
   error?: string;
   outputPath?: string;
+  fileType?: FileType;
 }
 
 /**
@@ -40,7 +41,7 @@ async function getUniqueFilename(outputDir: string, baseName: string, ext: strin
  * Render all file statuses as multi-line output
  */
 function renderStatus(statuses: FileStatus[], total: number): string {
-  const lines = statuses.map((s, i) => {
+  const lines = statuses.map((s) => {
     const fileName = basename(s.file);
     const idPart = s.watermarkId ? pc.dim(` (${s.watermarkId})`) : '';
     
@@ -64,18 +65,18 @@ function renderStatus(statuses: FileStatus[], total: number): string {
   
   const completed = statuses.filter(s => s.status === 'completed').length;
   const failed = statuses.filter(s => s.status === 'failed').length;
-  const header = pc.dim(`Processing ${completed + failed}/${total} image(s)...\n`);
+  const header = pc.dim(`Processing ${completed + failed}/${total} file(s)...\n`);
   
   return header + lines.join('\n');
 }
 
 export const watermarkCommand = new Command('watermark')
-  .description('Apply watermark to one or more images')
+  .description('Apply watermark to one or more files (images or PDFs)')
   .requiredOption('-t, --text <text>', 'Watermark text')
   .option('-o, --output <directory>', 'Output directory (default: current directory)')
   .option('--skip-filters <filters>', 'Comma-separated filters to skip (isoline, bulge)')
   .option('--api-key <key>', 'API key (or set SAFERLAYER_API_KEY env var)')
-  .argument('<files...>', 'Image files to watermark')
+  .argument('<files...>', 'Files to watermark (images or PDFs)')
   .action(async (files: string[], options) => {
     try {
       const apiKey = getApiKey(options.apiKey);
@@ -105,7 +106,7 @@ export const watermarkCommand = new Command('watermark')
 
       // Build inputs
       const inputs: WatermarkInput[] = files.map(file => ({
-        image: resolve(file),
+        file: resolve(file),
         text: options.text,
         skipFilters,
       }));
@@ -125,23 +126,27 @@ export const watermarkCommand = new Command('watermark')
           fileStatuses[index].status = status.status;
           logUpdate(renderStatus(fileStatuses, files.length));
         },
-        onComplete: async (id, result, index) => {
+        onComplete: async (_id, result, index) => {
           const originalFile = fileStatuses[index].file;
           const baseName = basename(originalFile, extname(originalFile));
           
+          // Determine output extension based on file type
+          const outputExt = result.fileType === 'pdf' ? '.pdf' : '.png';
+          
           // Get unique filename
-          let outputPath = join(outputDir, `${baseName}_watermarked.png`);
+          let outputPath = join(outputDir, `${baseName}_watermarked${outputExt}`);
           if (claimedPaths.has(outputPath)) {
-            outputPath = await getUniqueFilename(outputDir, baseName, '.png');
+            outputPath = await getUniqueFilename(outputDir, baseName, outputExt);
           }
           claimedPaths.add(outputPath);
           
-          await writeFile(outputPath, result.image);
+          await writeFile(outputPath, result.data);
           fileStatuses[index].status = 'completed';
           fileStatuses[index].outputPath = outputPath;
+          fileStatuses[index].fileType = result.fileType;
           logUpdate(renderStatus(fileStatuses, files.length));
         },
-        onError: (id, error, index) => {
+        onError: (_id, error, index) => {
           fileStatuses[index].status = 'failed';
           fileStatuses[index].error = error.message;
           logUpdate(renderStatus(fileStatuses, files.length));
@@ -151,21 +156,29 @@ export const watermarkCommand = new Command('watermark')
       const totalTime = Date.now() - startTime;
       const completed = fileStatuses.filter(s => s.status === 'completed').length;
       const failed = fileStatuses.filter(s => s.status === 'failed').length;
+      const pdfCount = fileStatuses.filter(s => s.fileType === 'pdf').length;
+      const imageCount = completed - pdfCount;
 
       // Final render and persist
       logUpdate(renderStatus(fileStatuses, files.length));
       logUpdate.done();
 
       console.log();
-      console.log(pc.green(`✓ Completed ${completed} image(s)`));
+      console.log(pc.green(`✓ Completed ${completed} file(s)`));
       console.log();
       console.log(pc.dim('  Successful:'), pc.green(completed.toString()));
+      if (imageCount > 0) {
+        console.log(pc.dim('    Images:'), imageCount.toString());
+      }
+      if (pdfCount > 0) {
+        console.log(pc.dim('    PDFs:'), pdfCount.toString());
+      }
       if (failed > 0) {
         console.log(pc.dim('  Failed:'), pc.red(failed.toString()));
       }
       console.log(pc.dim('  Total time:'), formatDuration(totalTime));
       
-      const totalBytes = results.reduce((sum, r) => sum + r.image.length, 0);
+      const totalBytes = results.reduce((sum, r) => sum + r.data.length, 0);
       console.log(pc.dim('  Total size:'), formatBytes(totalBytes));
 
     } catch (error) {
