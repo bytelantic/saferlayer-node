@@ -186,11 +186,13 @@ The watermarking process applies visual filters. You can optionally skip them:
 
 ```typescript
 await client.watermarks.create({
-  images: {
-    image: file,
-    watermarkText: 'TEXT',
-    skipFilters: ['isoline', 'bulge'], // Skip all filters
-  },
+  watermarks: [
+    {
+      image: file,
+      text: 'TEXT',
+      skipFilters: ['isoline', 'bulge'], // Skip all filters
+    },
+  ],
 });
 ```
 
@@ -208,12 +210,12 @@ import SaferLayer, {
 
 const input: WatermarkInput = {
   image: buffer,
-  watermarkText: 'TYPED',
+  text: 'TYPED',
   skipFilters: ['isoline'] satisfies FilterName[],
 };
 
 const results: WatermarkResult[] = await client.watermarks.create({
-  images: [input],
+  watermarks: [input],
 });
 ```
 
