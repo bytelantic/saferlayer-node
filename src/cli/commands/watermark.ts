@@ -75,6 +75,7 @@ export const watermarkCommand = new Command('watermark')
   .option('-o, --output <directory>', 'Output directory (default: current directory)')
   .option('--skip-filters <filters>', 'Comma-separated filters to skip (isoline, bulge)')
   .option('--api-key <key>', 'API key (or set SAFERLAYER_API_KEY env var)')
+  .option('--api-url <url>', 'API URL (or set SAFERLAYER_API_URL env var)')
   .argument('<files...>', 'Image files to watermark')
   .action(async (files: string[], options) => {
     try {
@@ -86,6 +87,7 @@ export const watermarkCommand = new Command('watermark')
 
       const client = new SaferLayerClient({
         apiKey,
+        apiUrl: options.apiUrl,
       });
 
       const outputDir = options.output ? resolve(options.output) : process.cwd();

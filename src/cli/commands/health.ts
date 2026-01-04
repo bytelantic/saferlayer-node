@@ -6,11 +6,13 @@ import { SaferLayerClient } from '../../client.js';
 export const healthCommand = new Command('health')
   .description('Check the API health status')
   .option('--timeout <ms>', 'Request timeout in milliseconds', '10000')
+  .option('--api-url <url>', 'API URL (or set SAFERLAYER_API_URL env var)')
   .action(async (options) => {
     const spinner = ora();
-    
+
     try {
       const client = new SaferLayerClient({
+        apiUrl: options.apiUrl,
         timeout: parseInt(options.timeout, 10),
       });
 

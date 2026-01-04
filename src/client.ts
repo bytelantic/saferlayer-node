@@ -12,7 +12,7 @@ import {
 import { Watermarks } from './resources/watermarks.js';
 import { Health } from './resources/health.js';
 
-const DEFAULT_BASE_URL = 'https://api.saferlayer.com';
+const DEFAULT_API_URL = 'https://api.saferlayer.com';
 const DEFAULT_TIMEOUT = 300_000; // 5 minutes
 const DEFAULT_MAX_RETRIES = 3;
 
@@ -40,20 +40,20 @@ const DEFAULT_MAX_RETRIES = 3;
  */
 export class SaferLayerClient {
   private readonly apiKey: string;
-  private readonly baseUrl: string;
+  private readonly apiUrl: string;
   private readonly timeout: number;
   private readonly maxRetries: number;
   private readonly retryDelay: number = 1000; // 1 second, fixed
 
   /** Watermarks resource for creating and managing watermarks */
   readonly watermarks: Watermarks;
-  
+
   /** Health resource for checking API status */
   readonly health: Health;
 
   constructor(options: SaferLayerClientOptions = {}) {
     this.apiKey = options.apiKey ?? process.env.SAFERLAYER_API_KEY ?? '';
-    this.baseUrl = DEFAULT_BASE_URL;
+    this.apiUrl = options.apiUrl ?? process.env.SAFERLAYER_API_URL ?? DEFAULT_API_URL;
     this.timeout = options.timeout ?? DEFAULT_TIMEOUT;
     this.maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
 
@@ -91,7 +91,7 @@ export class SaferLayerClient {
       parseJson = true,
     } = options;
 
-    const url = `${this.baseUrl}${path}`;
+    const url = new URL(path, this.apiUrl).toString();
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -184,7 +184,7 @@ export class SaferLayerClient {
   ): Promise<T> {
     const { timeout = this.timeout, signal } = options;
 
-    const url = `${this.baseUrl}${path}`;
+    const url = new URL(path, this.apiUrl).toString();
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
@@ -240,7 +240,7 @@ export class SaferLayerClient {
       signal,
     } = options;
 
-    const url = `${this.baseUrl}${path}`;
+    const url = new URL(path, this.apiUrl).toString();
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {

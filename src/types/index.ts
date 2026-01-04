@@ -150,13 +150,19 @@ export interface SaferLayerClientOptions {
    * @default process.env.SAFERLAYER_API_KEY
    */
   apiKey?: string;
-  
+
+  /**
+   * API URL to connect to.
+   * @default process.env.SAFERLAYER_API_URL || 'https://api.saferlayer.com'
+   */
+  apiUrl?: string;
+
   /**
    * Request timeout in milliseconds.
    * @default 300000 (5 minutes)
    */
   timeout?: number;
-  
+
   /**
    * Maximum number of retries for failed requests.
    * Applies to 503 and 5xx errors.
