@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2] - 2025-01-04
+
+- Minor refactors for release
+
 ## [1.0.1] - 2025-01-04
 
 ### Added
