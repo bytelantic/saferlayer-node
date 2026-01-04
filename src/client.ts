@@ -11,6 +11,7 @@ import {
 } from './errors/index.js';
 import { Watermarks } from './resources/watermarks.js';
 import { Health } from './resources/health.js';
+import { sleep } from './utils.js';
 
 const DEFAULT_API_URL = 'https://api.saferlayer.com';
 const DEFAULT_TIMEOUT = 300_000; // 5 minutes
@@ -331,13 +332,6 @@ export async function prepareImage(
   
   // Already a Blob
   return image;
-}
-
-/**
- * Sleep for a given number of milliseconds.
- */
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /**

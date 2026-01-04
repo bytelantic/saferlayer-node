@@ -12,11 +12,7 @@ export class SaferLayerError extends Error {
     this.name = 'SaferLayerError';
     this.status = status;
     this.cause = cause;
-    
-    // Maintains proper stack trace for where error was thrown
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, this.constructor);
-    }
+    Error.captureStackTrace(this, this.constructor);
   }
 }
 

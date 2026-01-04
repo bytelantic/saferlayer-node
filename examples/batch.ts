@@ -24,14 +24,14 @@ async function main() {
       { image: './id-back.jpg', text: 'Submitted by Jane Doe for ACME Realty' },
       { image: './proof-of-address.jpg', text: 'Submitted by Jane Doe for ACME Realty' },
     ],
-    onStatusChange: (id, status) => {
-      console.log(`  [${id}] ${status.status}`);
+    onStatusChange: (id, status, index) => {
+      console.log(`  [${index}] ${id}: ${status.status}`);
     },
-    onComplete: (id, result) => {
-      console.log(`  [${id}] ✓ Completed in ${result.metadata.processingTime}ms`);
+    onComplete: (id, result, index) => {
+      console.log(`  [${index}] ${id}: ✓ Completed in ${result.metadata.processingTime}ms`);
     },
-    onError: (id, error) => {
-      console.log(`  [${id}] ✗ Failed: ${error.message}`);
+    onError: (id, error, index) => {
+      console.log(`  [${index}] ${id}: ✗ Failed: ${error.message}`);
     },
   });
 

@@ -5,14 +5,13 @@ import type {
   WatermarkStatus,
   WatermarkMetadata,
   RequestOptions,
-  FilterName,
 } from '../types/index.js';
+import { VALID_FILTER_NAMES } from '../types/index.js';
 import { ValidationError, TimeoutError, SaferLayerError } from '../errors/index.js';
 import type { SaferLayerClient } from '../client.js';
 import { prepareImage } from '../client.js';
+import { sleep } from '../utils.js';
 import pLimit from 'p-limit';
-
-const VALID_FILTERS: readonly FilterName[] = ['isoline', 'bulge'];
 const POLL_INTERVAL = 1000; // 1 second
 const DEFAULT_TIMEOUT = 300_000; // 5 minutes
 const MAX_CONCURRENCY = 20;
@@ -208,12 +207,12 @@ export class Watermarks {
 
     if (input.skipFilters) {
       const invalidFilters = input.skipFilters.filter(
-        f => !VALID_FILTERS.includes(f)
+        f => !VALID_FILTER_NAMES.includes(f)
       );
-      
+
       if (invalidFilters.length > 0) {
         throw new ValidationError(
-          `Invalid filter name(s): ${invalidFilters.join(', ')}. Valid filters: ${VALID_FILTERS.join(', ')}`,
+          `Invalid filter name(s): ${invalidFilters.join(', ')}. Valid filters: ${VALID_FILTER_NAMES.join(', ')}`,
           'skipFilters'
         );
       }
@@ -236,11 +235,4 @@ export class Watermarks {
 
     return formData;
   }
-}
-
-/**
- * Sleep for a given number of milliseconds.
- */
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
 }

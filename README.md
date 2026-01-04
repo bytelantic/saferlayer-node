@@ -67,14 +67,14 @@ const results = await client.watermarks.create({
     { image: './id-back.jpg', text: 'Submitted by Jane Doe for ACME Realty' },
     { image: buffer, text: 'Submitted by Jane Doe for ACME Realty' },
   ],
-  onStatusChange: (id, status) => {
-    console.log(`[${id}] ${status.status}`);
+  onStatusChange: (id, status, index) => {
+    console.log(`[${index}] ${id}: ${status.status}`);
   },
-  onComplete: (id, result) => {
-    console.log(`[${id}] Done in ${result.metadata.processingTime}ms`);
+  onComplete: (id, result, index) => {
+    console.log(`[${index}] ${id}: Done in ${result.metadata.processingTime}ms`);
   },
-  onError: (id, error) => {
-    console.log(`[${id}] Failed: ${error.message}`);
+  onError: (id, error, index) => {
+    console.log(`[${index}] ${id}: Failed: ${error.message}`);
   },
 });
 ```
@@ -84,8 +84,11 @@ const results = await client.watermarks.create({
 ```typescript
 const health = await client.health.check();
 
-console.log(health.data.status);           // 'healthy'
-console.log(health.data.apiVersion);       // '1.0.0'
+console.log(health.data.status);            // 'healthy'
+console.log(health.data.apiVersion);        // '1.0.0'
+console.log(health.data.saferlayerVersion); // '1.0.0'
+console.log(health.data.service);           // 'saferlayer-api'
+console.log(health.data.timestamp);         // '2024-01-15T12:00:00.000Z'
 ```
 
 ## CLI
@@ -112,8 +115,10 @@ saferlayer watermark id-front.jpg id-back.jpg -t "Submitted by Jane Doe for ACME
 # Options:
 #   -t, --text <text>        Watermark text (required)
 #   -o, --output <dir>       Output directory (default: current directory)
-#   --skip-filters <list>    Filters to skip: isoline, bulge
+#   --skip-filters <list>    Comma-separated filters to skip: isoline, bulge
 #   --api-key <key>          API key (or use SAFERLAYER_API_KEY env var)
+
+# Output files are named: {original-name}_watermarked.png
 ```
 
 #### health
@@ -132,12 +137,15 @@ saferlayer health
 const client = new SaferLayer({
   // API key (required, unless SAFERLAYER_API_KEY is set)
   apiKey: 'sl_live_...',
-  
+
   // Request timeout in ms (default: 300000 / 5 minutes)
   timeout: 300_000,
-  
+
   // Max retries for 503/5xx errors (default: 3)
   maxRetries: 3,
+
+  // Custom API URL (or use SAFERLAYER_API_URL env var)
+  apiUrl: 'https://api.saferlayer.com',
 });
 ```
 
