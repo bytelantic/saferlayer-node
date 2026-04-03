@@ -55,7 +55,7 @@ describe('SaferLayerClient', () => {
         expect.any(String),
         expect.objectContaining({
           headers: expect.objectContaining({
-            Authorization: 'Bearer sl_option_key',
+            'X-Api-Key': 'sl_option_key',
           }),
         })
       );
@@ -104,8 +104,8 @@ describe('SaferLayerClient', () => {
     });
   });
 
-  describe('request() - Authorization', () => {
-    it('adds Bearer token to Authorization header', async () => {
+  describe('request() - Authentication', () => {
+    it('sends API key via X-Api-Key header', async () => {
       const mockFetch = mockFetchResponse({ body: { data: 'test' } });
       const client = new SaferLayerClient({ apiKey: 'sl_test_123' });
 
@@ -115,7 +115,7 @@ describe('SaferLayerClient', () => {
         expect.any(String),
         expect.objectContaining({
           headers: expect.objectContaining({
-            Authorization: 'Bearer sl_test_123',
+            'X-Api-Key': 'sl_test_123',
           }),
         })
       );
@@ -362,7 +362,7 @@ describe('SaferLayerClient', () => {
   });
 
   describe('uploadFile()', () => {
-    it('includes Authorization header', async () => {
+    it('sends API key via X-Api-Key header', async () => {
       const mockFetch = mockFetchResponse({
         body: { watermarkId: 'wm_123' },
       });
@@ -377,7 +377,7 @@ describe('SaferLayerClient', () => {
         expect.any(String),
         expect.objectContaining({
           headers: expect.objectContaining({
-            Authorization: 'Bearer upload_key',
+            'X-Api-Key': 'upload_key',
           }),
         })
       );
