@@ -109,7 +109,7 @@ export class SaferLayerClient {
         const response = await fetch(url, {
           method,
           headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
+            'X-Api-Key': this.apiKey,
             ...headers,
           },
           body,
@@ -256,7 +256,7 @@ export class SaferLayerClient {
         const response = await fetch(url, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
+            'X-Api-Key': this.apiKey,
           },
           body: formData,
           signal: combinedSignal,
